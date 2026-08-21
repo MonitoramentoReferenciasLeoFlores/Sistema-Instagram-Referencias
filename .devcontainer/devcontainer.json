@@ -1,0 +1,16 @@
+{
+  "name": "instagram-referencias",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+
+  "postCreateCommand": "npm install && cp -n .env.example .env || true",
+
+  "postStartCommand": "nohup npm start > /tmp/server.log 2>&1 &",
+
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Mesa de Luz — Referências",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
