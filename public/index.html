@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mesa de Luz — Referências</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◎</span>
+    <span class="brand-name">Mesa de Luz</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-view="triagem">Triagem</button>
+    <button class="tab" data-view="arquivo">Arquivo</button>
+    <button class="tab" data-view="perfis">Perfis</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===== TRIAGEM: uma foto por vez, como revisar negativos na mesa de luz ===== -->
+  <section id="view-triagem" class="view active">
+
+    <div class="frame-counter" id="frame-counter">QUADRO — / —</div>
+
+    <div class="lighttable">
+      <div class="sprockets left" aria-hidden="true"></div>
+
+      <div class="print-card" id="print-card">
+        <div class="print-empty" id="empty-state">
+          <p>Nenhum post pendente no momento.</p>
+          <button id="btn-fetch-now" class="btn-ghost">Buscar posts agora</button>
+        </div>
+
+        <img id="post-image" alt="" hidden />
+        <div class="print-stamp" id="post-stamp" hidden>
+          <span class="stamp-user" id="post-user"></span>
+          <span class="stamp-date" id="post-date"></span>
+        </div>
+        <p class="print-caption" id="post-caption" hidden></p>
+      </div>
+
+      <div class="sprockets right" aria-hidden="true"></div>
+    </div>
+
+    <div class="decision-controls" id="decision-controls" hidden>
+      <button class="mark-btn discard" id="btn-discard" title="Descartar">
+        <svg viewBox="0 0 60 60"><path class="mark-path" d="M15,15 L45,45 M45,15 L15,45" /></svg>
+        <span>Descartar</span>
+      </button>
+      <button class="mark-btn save" id="btn-save" title="Guardar">
+        <svg viewBox="0 0 60 60"><circle class="mark-path" cx="30" cy="30" r="20" /></svg>
+        <span>Guardar</span>
+      </button>
+    </div>
+
+    <div class="save-drawer" id="save-drawer" hidden>
+      <label>
+        Categoria
+        <input type="text" id="save-category" placeholder="ex.: campanha, storytelling, evento" />
+      </label>
+      <label>
+        Por que isso é uma referência?
+        <textarea id="save-note" rows="2" placeholder="anote o motivo em uma frase"></textarea>
+      </label>
+      <div class="drawer-actions">
+        <button id="btn-cancel-save" class="btn-ghost">Cancelar</button>
+        <button id="btn-confirm-save" class="btn-solid">Confirmar</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== ARQUIVO: contact sheet das referencias guardadas ===== -->
+  <section id="view-arquivo" class="view">
+
+    <div class="toolbar">
+      <input type="search" id="filter-q" placeholder="buscar por legenda ou nota..." />
+      <select id="filter-category">
+        <option value="">todas as categorias</option>
+      </select>
+      <select id="filter-profile">
+        <option value="">todos os perfis</option>
+      </select>
+    </div>
+
+    <div class="contact-sheet" id="contact-sheet"></div>
+    <p class="empty-note" id="arquivo-empty" hidden>Nenhuma referência guardada ainda — comece a triagem na outra aba.</p>
+
+  </section>
+
+  <!-- ===== PERFIS: gestao dos perfis acompanhados ===== -->
+  <section id="view-perfis" class="view">
+
+    <form id="form-add-profile" class="add-profile">
+      <input type="text" id="new-profile-username" placeholder="@usuario_do_instagram" required />
+      <button type="submit" class="btn-solid">Adicionar</button>
+    </form>
+
+    <ul class="profile-list" id="profile-list"></ul>
+
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

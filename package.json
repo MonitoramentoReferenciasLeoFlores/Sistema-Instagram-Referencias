@@ -1,0 +1,18 @@
+{
+  "name": "instagram-referencias",
+  "version": "0.1.0",
+  "description": "Feed de triagem de posts do Instagram + banco de referencias salvas",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "fetch-now": "node src/fetchJob.js --once"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
+}
