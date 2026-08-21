@@ -10,9 +10,16 @@
  * uma API Key da sua conta Bright Data (painel -> API Key) e o ID do
  * dataset/scraper de Instagram configurado la.
  *
- * Documentacao de referencia (confirme o endpoint exato no painel Bright
- * Data, pois varia por tipo de dataset):
- *   https://docs.brightdata.com/scraping-automation/web-scraper-api/overview
+ * Documentacao de referencia (o Bright Data as vezes ajusta pequenos
+ * detalhes; se algo der erro, confira aqui antes de mexer no codigo):
+ *   https://docs.brightdata.com/datasets/scrapers/instagram/introduction
+ *
+ * IMPORTANTE sobre os nomes dos campos: a funcao mapBrightDataPost() (mais
+ * abaixo) tenta adivinhar os nomes mais comuns dos campos que o Bright Data
+ * devolve (imagem, legenda, data). Se, depois de configurar de verdade, os
+ * posts aparecerem sem foto ou sem legenda, é sinal de que o nome exato do
+ * campo é outro — o jeito de descobrir é olhar um exemplo de resultado na
+ * aba "Preview" do dataset, no painel do Bright Data, e ajustar essa função.
  *
  * ENQUANTO voce nao configura a chave (.env vazio), este modulo roda em
  * MODO DEMO: gera posts fake para voce testar o feed, a triagem e o banco
@@ -46,42 +53,76 @@ function buildDemoPost(username, index) {
  */
 async function fetchLatestPosts(username) {
   if (DEMO_MODE) {
-    // Retorna 3 posts fake por perfil, so para popular o feed em modo teste.
     return [0, 1, 2].map((i) => buildDemoPost(username, i));
   }
 
-  // TODO: Implementar a chamada real ao Bright Data aqui.
-  // Esboco do fluxo tipico do Web Scraper API do Bright Data:
-  //
-  //   1. Disparar a coleta para o dataset de Instagram, passando o `username`
-  //      (ou URL do perfil) como parametro de input.
-  //   2. Fazer polling do endpoint de status ate a coleta terminar (ou usar
-  //      webhook, se o seu plano suportar).
-  //   3. Buscar o resultado (JSON) com os posts do perfil.
-  //   4. Mapear cada post do formato do Bright Data para o formato usado
-  //      neste projeto: { post_url, image_url, caption, posted_at }.
-  //
-  // Exemplo (ajuste endpoint, payload e parsing conforme a doc do seu dataset):
-  //
-  //   const res = await fetch(
-  //     `https://api.brightdata.com/datasets/v3/trigger?dataset_id=${process.env.BRIGHTDATA_DATASET_ID}`,
-  //     {
-  //       method: 'POST',
-  //       headers: {
-  //         Authorization: `Bearer ${process.env.BRIGHTDATA_API_KEY}`,
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify([{ url: `https://instagram.com/${username}/` }]),
-  //     }
-  //   );
-  //   const { snapshot_id } = await res.json();
-  //   // ... poll + fetch do snapshot_id, depois mapear os campos ...
+  const profileUrl = `https://www.instagram.com/${username}/`;
+  const snapshotId = await triggerCollection(profileUrl);
+  await waitUntilReady(snapshotId);
+  const rawPosts = await downloadSnapshot(snapshotId);
+  return rawPosts.map(mapBrightDataPost).filter(Boolean);
+}
 
-  throw new Error(
-    `BRIGHTDATA_API_KEY configurada, mas a integracao real ainda nao foi ` +
-      `implementada em src/brightdata.js (veja o TODO). Peça para o Claude ` +
-      `Code completar essa funcao com o endpoint certo do seu dataset.`
-  );
+const BASE_URL = 'https://api.brightdata.com/datasets/v3';
+const authHeaders = () => ({
+  Authorization: `Bearer ${process.env.BRIGHTDATA_API_KEY}`,
+  'Content-Type': 'application/json',
+});
+
+async function triggerCollection(profileUrl) {
+  const url = `${BASE_URL}/scrape?dataset_id=${process.env.BRIGHTDATA_DATASET_ID}&include_errors=true`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify([{ url: profileUrl }]),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Bright Data recusou o pedido (status ${res.status}): ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  if (Array.isArray(data)) return { immediate: data };
+  if (!data.snapshot_id) throw new Error(`Resposta inesperada do Bright Data: ${JSON.stringify(data)}`);
+  return data.snapshot_id;
+}
+
+async function waitUntilReady(snapshotId, { maxTries = 20, delayMs = 3000 } = {}) {
+  if (typeof snapshotId === 'object') return;
+
+  for (let i = 0; i < maxTries; i += 1) {
+    const res = await fetch(`${BASE_URL}/progress/${snapshotId}`, { headers: authHeaders() });
+    const data = await res.json();
+
+    if (data.status === 'ready') return;
+    if (data.status === 'failed') throw new Error(`Coleta falhou no Bright Data: ${JSON.stringify(data)}`);
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw new Error('Tempo esgotado esperando o Bright Data terminar a coleta (mais de 1 minuto).');
+}
+
+async function downloadSnapshot(snapshotId) {
+  if (typeof snapshotId === 'object') return snapshotId.immediate;
+
+  const res = await fetch(`${BASE_URL}/snapshot/${snapshotId}?format=json`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`Falha ao baixar resultado do Bright Data (status ${res.status})`);
+  return res.json();
+}
+
+function mapBrightDataPost(item) {
+  if (!item || (item.url && item.error)) return null;
+
+  const postUrl = item.url || item.post_url || item.link;
+  if (!postUrl) return null;
+
+  return {
+    post_url: postUrl,
+    image_url: item.display_url || item.image_url || item.thumbnail || item.photos?.[0] || null,
+    caption: item.caption || item.description || item.title || '',
+    posted_at: item.date_posted || item.timestamp || item.posted_at || null,
+  };
 }
 
 module.exports = { fetchLatestPosts, DEMO_MODE };
