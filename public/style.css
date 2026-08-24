@@ -422,6 +422,10 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   z-index: 50;
 }
 
+.modal-overlay[hidden] {
+  display: none;
+}
+
 .modal-box {
   background: var(--bg-raised);
   border-radius: 6px;
