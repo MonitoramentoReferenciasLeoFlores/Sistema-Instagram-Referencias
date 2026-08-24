@@ -79,7 +79,7 @@ async function triggerCollection(profileUrl) {
   return data.snapshot_id;
 }
 
-async function waitUntilReady(snapshotId, { maxTries = 20, delayMs = 3000 } = {}) {
+async function waitUntilReady(snapshotId, { maxTries = 40, delayMs = 5000 } = {}) {
   if (typeof snapshotId === 'object') return;
 
   for (let i = 0; i < maxTries; i += 1) {
