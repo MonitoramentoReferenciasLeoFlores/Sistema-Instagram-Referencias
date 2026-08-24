@@ -61,25 +61,6 @@ async function fetchLatestPosts(username) {
   const snapshotId = await triggerCollection(profileUrl);
   await waitUntilReady(snapshotId);
   const rawPosts = await downloadSnapshot(snapshotId);
-
-  // Pista de diagnostico: mostra no terminal quais campos o Bright Data
-  // realmente devolveu no primeiro post. Se fotos/videos nao aparecerem na
-  // tela, veja esta linha no terminal e mande o print -- ela mostra os
-  // nomes exatos dos campos, que podem ser diferentes do que buildMediaList()
-  // tenta adivinhar mais abaixo.
-   if (rawPosts[0]) {
-    const sample = rawPosts[0];
-    const debug = {};
-    for (const key of ['photos', 'images', 'post_content', 'videos', 'videos_duration', 'video_url', 'thumbnail', 'content_type']) {
-      if (key in sample) {
-        const val = sample[key];
-        debug[key] = Array.isArray(val) ? val.slice(0, 2) : val;
-      }
-    }
-    console.log(`[brightdata] Amostra de midia do post de @${username}:`);
-    console.log(JSON.stringify(debug, null, 2));
-  }
-
   return rawPosts.map(mapBrightDataPost).filter(Boolean);
 }
 
@@ -154,23 +135,37 @@ function mapBrightDataPost(item) {
 
 /**
  * Monta a lista de midia (fotos e/ou video) de um post, na ordem certa para
- * exibir como carrossel. Tenta varias variacoes de nome de campo, porque o
- * Bright Data as vezes muda isso entre datasets/versoes. Se mesmo assim
- * vier vazio, veja a "pista de diagnostico" no terminal (em fetchLatestPosts,
- * mais acima) pra descobrir o nome exato e adicionar aqui.
+ * exibir como carrossel.
+ *
+ * Confirmado com uma amostra real do Bright Data: o campo "post_content" e
+ * a fonte mais confiavel -- ele ja vem como uma lista ordenada (por "index")
+ * com cada item marcado como "type": "Photo" ou "Video". Por isso usamos
+ * ele como primeira opcao, e so caimos para "photos"/"videos" separados se
+ * "post_content" nao vier (o que nao deveria acontecer, mas por seguranca).
  */
 function buildMediaList(item) {
-  const photos = firstNonEmptyArray(item, ['photos', 'images', 'photo_urls', 'image_urls', 'carousel_images']);
-  const videos = firstNonEmptyArray(item, ['videos', 'video_urls', 'video_url']);
+  if (Array.isArray(item.post_content) && item.post_content.length > 0) {
+    const media = [...item.post_content]
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+      .map((entry) => ({
+        type: entry.type === 'Video' ? 'video' : 'image',
+        url: entry.url,
+      }))
+      .filter((m) => m.url);
+
+    if (media.length > 0) return media;
+  }
+
+  const photos = firstNonEmptyArray(item, ['photos', 'images']);
+  const videos = firstNonEmptyArray(item, ['videos']);
 
   const media = [
     ...photos.map((url) => ({ type: 'image', url: typeof url === 'string' ? url : url?.url })),
     ...videos.map((url) => ({ type: 'video', url: typeof url === 'string' ? url : url?.url })),
   ].filter((m) => m.url);
 
-  if (media.length === 0) {
-    const single = item.display_url || item.thumbnail || item.image_url;
-    if (single) media.push({ type: 'image', url: single });
+  if (media.length === 0 && item.thumbnail) {
+    media.push({ type: 'image', url: item.thumbnail });
   }
 
   return media;
