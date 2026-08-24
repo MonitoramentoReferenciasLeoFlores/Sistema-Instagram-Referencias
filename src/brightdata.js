@@ -5,21 +5,10 @@
  * IMPORTANTE - leia antes de implementar:
  * A API oficial do Instagram (Graph API) NAO permite puxar posts de perfis
  * de terceiros, entao esse projeto depende de um provedor de extracao como o
- * Bright Data. Isso e diferente do conector MCP do Bright Data que voce usa
- * dentro do Claude: aqui, rodando como um servico Node standalone, e preciso
- * uma API Key da sua conta Bright Data (painel -> API Key) e o ID do
- * dataset/scraper de Instagram configurado la.
+ * Bright Data.
  *
- * Documentacao de referencia (o Bright Data as vezes ajusta pequenos
- * detalhes; se algo der erro, confira aqui antes de mexer no codigo):
- *   https://docs.brightdata.com/datasets/scrapers/instagram/introduction
- *
- * IMPORTANTE sobre os nomes dos campos: a funcao mapBrightDataPost() (mais
- * abaixo) tenta adivinhar os nomes mais comuns dos campos que o Bright Data
- * devolve (imagem, legenda, data). Se, depois de configurar de verdade, os
- * posts aparecerem sem foto ou sem legenda, é sinal de que o nome exato do
- * campo é outro — o jeito de descobrir é olhar um exemplo de resultado na
- * aba "Preview" do dataset, no painel do Bright Data, e ajustar essa função.
+ * Documentacao de referencia:
+ *   https://docs.brightdata.com/api-reference/web-scraper-api/asynchronous-requests
  *
  * ENQUANTO voce nao configura a chave (.env vazio), este modulo roda em
  * MODO DEMO: gera posts fake para voce testar o feed, a triagem e o banco
@@ -46,11 +35,6 @@ function buildDemoPost(username, index) {
   };
 }
 
-/**
- * Busca os posts mais recentes de um perfil publico do Instagram.
- * @param {string} username - handle do perfil, sem o "@"
- * @returns {Promise<Array<{post_url, image_url, caption, posted_at}>>}
- */
 async function fetchLatestPosts(username) {
   if (DEMO_MODE) {
     return [0, 1, 2].map((i) => buildDemoPost(username, i));
@@ -69,8 +53,16 @@ const authHeaders = () => ({
   'Content-Type': 'application/json',
 });
 
+/**
+ * Passo 1: dispara a "descoberta" de posts recentes de um perfil.
+ * Os parametros type=discover_new&discover_by=url sao o que diz ao
+ * Bright Data "isso e um perfil pra descobrir posts", nao um post especifico.
+ */
 async function triggerCollection(profileUrl) {
-  const url = `${BASE_URL}/scrape?dataset_id=${process.env.BRIGHTDATA_DATASET_ID}&include_errors=true`;
+  const url =
+    `${BASE_URL}/trigger?dataset_id=${process.env.BRIGHTDATA_DATASET_ID}` +
+    `&include_errors=true&type=discover_new&discover_by=url&limit_per_input=10`;
+
   const res = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
