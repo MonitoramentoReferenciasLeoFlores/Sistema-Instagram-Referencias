@@ -7,10 +7,6 @@ const insertPost = db.prepare(`
   VALUES (@profile_username, @post_url, @image_url, @caption, @posted_at)
 `);
 
-/**
- * Busca posts novos para todos os perfis ativos e insere no banco
- * (ignorando posts cuja post_url ja existe, via UNIQUE + INSERT OR IGNORE).
- */
 async function runFetchJob() {
   const profiles = db.prepare('SELECT username FROM profiles WHERE active = 1').all();
 
@@ -19,19 +15,29 @@ async function runFetchJob() {
     return { profilesChecked: 0, postsInserted: 0 };
   }
 
-  let postsInserted = 0;
-
-  for (const { username } of profiles) {
-    try {
+  // Busca todos os perfis ao mesmo tempo, em vez de um de cada vez -- assim
+  // o tempo total nao vira "numero de perfis x tempo de espera de cada um".
+  const results = await Promise.allSettled(
+    profiles.map(async ({ username }) => {
       const posts = await fetchLatestPosts(username);
+      let inserted = 0;
       for (const post of posts) {
         const result = insertPost.run({ profile_username: username, ...post });
-        if (result.changes > 0) postsInserted += 1;
+        if (result.changes > 0) inserted += 1;
       }
-    } catch (err) {
-      console.error(`[fetchJob] Erro ao buscar posts de @${username}:`, err.message);
+      return inserted;
+    })
+  );
+
+  let postsInserted = 0;
+  results.forEach((result, i) => {
+    const username = profiles[i].username;
+    if (result.status === 'fulfilled') {
+      postsInserted += result.value;
+    } else {
+      console.error(`[fetchJob] Erro ao buscar posts de @${username}:`, result.reason.message);
     }
-  }
+  });
 
   console.log(
     `[fetchJob] Perfis checados: ${profiles.length} | Posts novos: ${postsInserted}` +
@@ -40,7 +46,6 @@ async function runFetchJob() {
   return { profilesChecked: profiles.length, postsInserted };
 }
 
-// Permite rodar manualmente: node src/fetchJob.js --once
 if (require.main === module) {
   runFetchJob().then(() => process.exit(0));
 }
