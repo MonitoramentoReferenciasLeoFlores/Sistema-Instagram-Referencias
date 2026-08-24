@@ -67,8 +67,17 @@ async function fetchLatestPosts(username) {
   // tela, veja esta linha no terminal e mande o print -- ela mostra os
   // nomes exatos dos campos, que podem ser diferentes do que buildMediaList()
   // tenta adivinhar mais abaixo.
-  if (rawPosts[0]) {
-    console.log(`[brightdata] Campos do primeiro post de @${username}:`, Object.keys(rawPosts[0]));
+   if (rawPosts[0]) {
+    const sample = rawPosts[0];
+    const debug = {};
+    for (const key of ['photos', 'images', 'post_content', 'videos', 'videos_duration', 'video_url', 'thumbnail', 'content_type']) {
+      if (key in sample) {
+        const val = sample[key];
+        debug[key] = Array.isArray(val) ? val.slice(0, 2) : val;
+      }
+    }
+    console.log(`[brightdata] Amostra de midia do post de @${username}:`);
+    console.log(JSON.stringify(debug, null, 2));
   }
 
   return rawPosts.map(mapBrightDataPost).filter(Boolean);
