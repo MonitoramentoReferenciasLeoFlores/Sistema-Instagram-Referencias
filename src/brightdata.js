@@ -10,12 +10,6 @@
  * Documentacao de referencia:
  *   https://docs.brightdata.com/api-reference/web-scraper-api/asynchronous-requests
  *
- * IMPORTANTE sobre os nomes dos campos: a funcao mapBrightDataPost() (mais
- * abaixo) tenta adivinhar os nomes mais comuns dos campos que o Bright Data
- * devolve (fotos, video, legenda, data). Se os posts aparecerem sem foto/
- * video/legenda, confira um exemplo de resultado na aba "Preview" do
- * dataset no painel do Bright Data e ajuste essa funcao.
- *
  * ENQUANTO voce nao configura a chave (.env vazio), este modulo roda em
  * MODO DEMO: gera posts fake (incluindo exemplos de carrossel e video)
  * para voce testar o feed sem depender de credenciais reais.
@@ -35,7 +29,7 @@ const DEMO_VIDEO_URL = 'https://www.w3schools.com/html/mov_bbb.mp4';
 
 function buildDemoPost(username, index) {
   const seed = `${username}-${index}-${Date.now()}`;
-  const kind = index % 3; // varia: foto unica / carrossel / video, pra testar os 3 casos
+  const kind = index % 3;
 
   let media;
   if (kind === 0) {
@@ -67,6 +61,16 @@ async function fetchLatestPosts(username) {
   const snapshotId = await triggerCollection(profileUrl);
   await waitUntilReady(snapshotId);
   const rawPosts = await downloadSnapshot(snapshotId);
+
+  // Pista de diagnostico: mostra no terminal quais campos o Bright Data
+  // realmente devolveu no primeiro post. Se fotos/videos nao aparecerem na
+  // tela, veja esta linha no terminal e mande o print -- ela mostra os
+  // nomes exatos dos campos, que podem ser diferentes do que buildMediaList()
+  // tenta adivinhar mais abaixo.
+  if (rawPosts[0]) {
+    console.log(`[brightdata] Campos do primeiro post de @${username}:`, Object.keys(rawPosts[0]));
+  }
+
   return rawPosts.map(mapBrightDataPost).filter(Boolean);
 }
 
@@ -139,14 +143,21 @@ function mapBrightDataPost(item) {
   };
 }
 
+/**
+ * Monta a lista de midia (fotos e/ou video) de um post, na ordem certa para
+ * exibir como carrossel. Tenta varias variacoes de nome de campo, porque o
+ * Bright Data as vezes muda isso entre datasets/versoes. Se mesmo assim
+ * vier vazio, veja a "pista de diagnostico" no terminal (em fetchLatestPosts,
+ * mais acima) pra descobrir o nome exato e adicionar aqui.
+ */
 function buildMediaList(item) {
-  const photos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
-  const videos = Array.isArray(item.videos) ? item.videos.filter(Boolean) : [];
+  const photos = firstNonEmptyArray(item, ['photos', 'images', 'photo_urls', 'image_urls', 'carousel_images']);
+  const videos = firstNonEmptyArray(item, ['videos', 'video_urls', 'video_url']);
 
   const media = [
-    ...photos.map((url) => ({ type: 'image', url })),
-    ...videos.map((url) => ({ type: 'video', url })),
-  ];
+    ...photos.map((url) => ({ type: 'image', url: typeof url === 'string' ? url : url?.url })),
+    ...videos.map((url) => ({ type: 'video', url: typeof url === 'string' ? url : url?.url })),
+  ].filter((m) => m.url);
 
   if (media.length === 0) {
     const single = item.display_url || item.thumbnail || item.image_url;
@@ -154,6 +165,15 @@ function buildMediaList(item) {
   }
 
   return media;
+}
+
+function firstNonEmptyArray(item, keys) {
+  for (const key of keys) {
+    const value = item[key];
+    if (Array.isArray(value) && value.length > 0) return value.filter(Boolean);
+    if (typeof value === 'string' && value) return [value];
+  }
+  return [];
 }
 
 module.exports = { fetchLatestPosts, DEMO_MODE };

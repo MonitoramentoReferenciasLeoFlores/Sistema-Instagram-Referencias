@@ -17,10 +17,6 @@ function parseMedia(post) {
   return post.image_url ? [{ type: 'image', url: post.image_url }] : [];
 }
 
-/**
- * Preenche um visualizador de midia (carrossel/video) com os elementos dados.
- * Reaproveitado tanto na Triagem quanto no modal do Arquivo.
- */
 function renderMediaViewer({ frameEl, prevEl, nextEl, dotsEl, media, index, onChange }) {
   const item = media[index];
   frameEl.innerHTML = '';
@@ -277,12 +273,14 @@ function debounce(fn, delay) {
 /* ---------- Modal de visualizacao grande (Arquivo) ---------- */
 
 let modalMediaIndex = 0;
+let currentModalRefId = null;
 
 function openRefModal(refIndex) {
   const ref = arquivoRefs[refIndex];
   if (!ref) return;
 
   modalMediaIndex = 0;
+  currentModalRefId = ref.id;
   document.getElementById('modal-user').textContent = `@${ref.profile_username}`;
   document.getElementById('modal-link').href = ref.post_url;
   document.getElementById('modal-caption').textContent = ref.caption || '(sem legenda)';
@@ -299,6 +297,27 @@ function openRefModal(refIndex) {
   renderModalMedia(ref);
   document.getElementById('ref-modal').hidden = false;
 }
+
+document.getElementById('modal-delete').addEventListener('click', async () => {
+  if (!currentModalRefId) return;
+  if (!confirm('Excluir esta referência guardada? Essa ação não pode ser desfeita.')) return;
+
+  try {
+    const res = await fetch(`/api/posts/${currentModalRefId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Não consegui excluir: ${body.error || res.status}`);
+      return;
+    }
+  } catch (err) {
+    alert(`Erro de conexão ao excluir: ${err.message}`);
+    return;
+  }
+
+  document.getElementById('ref-modal').hidden = true;
+  document.getElementById('modal-media-frame').innerHTML = '';
+  loadArquivo();
+});
 
 function renderModalMedia(ref) {
   const media = parseMedia(ref);

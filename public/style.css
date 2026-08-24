@@ -457,6 +457,18 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   align-items: center;
   margin-bottom: 12px;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modal-header-actions { display: flex; gap: 8px; }
+
+.btn-danger {
+  color: var(--reject);
+  border-color: rgba(196, 67, 43, 0.5);
+}
+
+.btn-danger:hover {
+  background: rgba(196, 67, 43, 0.15);
 }
 
 .modal-caption {

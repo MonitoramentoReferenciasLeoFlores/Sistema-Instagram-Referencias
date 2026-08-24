@@ -6,7 +6,6 @@ const router = express.Router();
 
 /* ---------- Feed de triagem ---------- */
 
-// Lista posts pendentes de decisao (mais antigos primeiro)
 router.get('/feed', (req, res) => {
   const posts = db
     .prepare(`SELECT * FROM posts WHERE status = 'pending' ORDER BY fetched_at ASC LIMIT 100`)
@@ -14,7 +13,6 @@ router.get('/feed', (req, res) => {
   res.json(posts);
 });
 
-// Marca um post como guardado (referencia)
 router.post('/posts/:id/save', (req, res) => {
   try {
     const { category = null, note = null } = req.body || {};
@@ -33,7 +31,6 @@ router.post('/posts/:id/save', (req, res) => {
   }
 });
 
-// Marca um post como descartado
 router.post('/posts/:id/discard', (req, res) => {
   try {
     const result = db
@@ -53,7 +50,6 @@ router.post('/posts/:id/discard', (req, res) => {
 
 /* ---------- Banco de referencias salvas ---------- */
 
-// Lista/busca referencias salvas. Query params opcionais: q, category, profile
 router.get('/references', (req, res) => {
   const { q, category, profile } = req.query;
 
@@ -112,6 +108,19 @@ router.post('/fetch-now', async (req, res) => {
     const result = await runFetchJob();
     res.json(result);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------- Excluir um post/referencia permanentemente ---------- */
+
+router.delete('/posts/:id', (req, res) => {
+  try {
+    const result = db.prepare('DELETE FROM posts WHERE id = ?').run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /posts/:id] erro:', err);
     res.status(500).json({ error: err.message });
   }
 });
