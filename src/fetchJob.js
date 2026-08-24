@@ -3,10 +3,16 @@ const db = require('./db');
 const { fetchLatestPosts, DEMO_MODE } = require('./brightdata');
 
 const insertPost = db.prepare(`
-  INSERT OR IGNORE INTO posts (profile_username, post_url, image_url, caption, posted_at)
-  VALUES (@profile_username, @post_url, @image_url, @caption, @posted_at)
+  INSERT OR IGNORE INTO posts (profile_username, post_url, image_url, media_json, caption, posted_at)
+  VALUES (@profile_username, @post_url, @image_url, @media_json, @caption, @posted_at)
 `);
 
+/**
+ * Busca posts novos para todos os perfis ativos e insere no banco
+ * (ignorando posts cuja post_url ja existe, via UNIQUE + INSERT OR IGNORE).
+ * Os perfis sao buscados todos ao mesmo tempo (nao um de cada vez), pra o
+ * tempo total nao virar "numero de perfis x tempo de espera de cada um".
+ */
 async function runFetchJob() {
   const profiles = db.prepare('SELECT username FROM profiles WHERE active = 1').all();
 
@@ -15,8 +21,6 @@ async function runFetchJob() {
     return { profilesChecked: 0, postsInserted: 0 };
   }
 
-  // Busca todos os perfis ao mesmo tempo, em vez de um de cada vez -- assim
-  // o tempo total nao vira "numero de perfis x tempo de espera de cada um".
   const results = await Promise.allSettled(
     profiles.map(async ({ username }) => {
       const posts = await fetchLatestPosts(username);
@@ -46,6 +50,7 @@ async function runFetchJob() {
   return { profilesChecked: profiles.length, postsInserted };
 }
 
+// Permite rodar manualmente: node src/fetchJob.js --once
 if (require.main === module) {
   runFetchJob().then(() => process.exit(0));
 }

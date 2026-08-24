@@ -16,29 +16,39 @@ router.get('/feed', (req, res) => {
 
 // Marca um post como guardado (referencia)
 router.post('/posts/:id/save', (req, res) => {
-  const { category = null, note = null } = req.body || {};
-  const result = db
-    .prepare(
-      `UPDATE posts SET status = 'saved', category = ?, note = ?, reviewed_at = datetime('now')
-       WHERE id = ? AND status = 'pending'`
-    )
-    .run(category, note, req.params.id);
+  try {
+    const { category = null, note = null } = req.body || {};
+    const result = db
+      .prepare(
+        `UPDATE posts SET status = 'saved', category = ?, note = ?, reviewed_at = datetime('now')
+         WHERE id = ? AND status = 'pending'`
+      )
+      .run(category, note, req.params.id);
 
-  if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado ou ja revisado' });
-  res.json({ ok: true });
+    if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado ou ja revisado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /posts/:id/save] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Marca um post como descartado
 router.post('/posts/:id/discard', (req, res) => {
-  const result = db
-    .prepare(
-      `UPDATE posts SET status = 'discarded', reviewed_at = datetime('now')
-       WHERE id = ? AND status = 'pending'`
-    )
-    .run(req.params.id);
+  try {
+    const result = db
+      .prepare(
+        `UPDATE posts SET status = 'discarded', reviewed_at = datetime('now')
+         WHERE id = ? AND status = 'pending'`
+      )
+      .run(req.params.id);
 
-  if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado ou ja revisado' });
-  res.json({ ok: true });
+    if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado ou ja revisado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /posts/:id/discard] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ---------- Banco de referencias salvas ---------- */

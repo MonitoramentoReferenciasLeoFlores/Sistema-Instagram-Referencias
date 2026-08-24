@@ -10,9 +10,15 @@
  * Documentacao de referencia:
  *   https://docs.brightdata.com/api-reference/web-scraper-api/asynchronous-requests
  *
+ * IMPORTANTE sobre os nomes dos campos: a funcao mapBrightDataPost() (mais
+ * abaixo) tenta adivinhar os nomes mais comuns dos campos que o Bright Data
+ * devolve (fotos, video, legenda, data). Se os posts aparecerem sem foto/
+ * video/legenda, confira um exemplo de resultado na aba "Preview" do
+ * dataset no painel do Bright Data e ajuste essa funcao.
+ *
  * ENQUANTO voce nao configura a chave (.env vazio), este modulo roda em
- * MODO DEMO: gera posts fake para voce testar o feed, a triagem e o banco
- * de referencias sem depender de credenciais reais.
+ * MODO DEMO: gera posts fake (incluindo exemplos de carrossel e video)
+ * para voce testar o feed sem depender de credenciais reais.
  */
 
 const DEMO_MODE = !process.env.BRIGHTDATA_API_KEY;
@@ -25,11 +31,28 @@ const DEMO_CAPTIONS = [
   'Post carrossel explicando um processo em etapas',
 ];
 
+const DEMO_VIDEO_URL = 'https://www.w3schools.com/html/mov_bbb.mp4';
+
 function buildDemoPost(username, index) {
   const seed = `${username}-${index}-${Date.now()}`;
+  const kind = index % 3; // varia: foto unica / carrossel / video, pra testar os 3 casos
+
+  let media;
+  if (kind === 0) {
+    media = [{ type: 'image', url: `https://picsum.photos/seed/${encodeURIComponent(seed)}/1080/1080` }];
+  } else if (kind === 1) {
+    media = [0, 1, 2].map((i) => ({
+      type: 'image',
+      url: `https://picsum.photos/seed/${encodeURIComponent(seed + i)}/1080/1350`,
+    }));
+  } else {
+    media = [{ type: 'video', url: DEMO_VIDEO_URL }];
+  }
+
   return {
     post_url: `https://instagram.com/p/demo-${seed}`,
-    image_url: `https://picsum.photos/seed/${encodeURIComponent(seed)}/600/600`,
+    image_url: media[0].url,
+    media_json: JSON.stringify(media),
     caption: DEMO_CAPTIONS[index % DEMO_CAPTIONS.length],
     posted_at: new Date(Date.now() - index * 3600 * 1000).toISOString(),
   };
@@ -53,11 +76,6 @@ const authHeaders = () => ({
   'Content-Type': 'application/json',
 });
 
-/**
- * Passo 1: dispara a "descoberta" de posts recentes de um perfil.
- * Os parametros type=discover_new&discover_by=url sao o que diz ao
- * Bright Data "isso e um perfil pra descobrir posts", nao um post especifico.
- */
 async function triggerCollection(profileUrl) {
   const url =
     `${BASE_URL}/trigger?dataset_id=${process.env.BRIGHTDATA_DATASET_ID}` +
@@ -110,12 +128,32 @@ function mapBrightDataPost(item) {
   const postUrl = item.url || item.post_url || item.link;
   if (!postUrl) return null;
 
+  const media = buildMediaList(item);
+
   return {
     post_url: postUrl,
-    image_url: item.display_url || item.image_url || item.thumbnail || item.photos?.[0] || null,
+    image_url: media[0]?.url || item.display_url || item.thumbnail || null,
+    media_json: JSON.stringify(media),
     caption: item.caption || item.description || item.title || '',
     posted_at: item.date_posted || item.timestamp || item.posted_at || null,
   };
+}
+
+function buildMediaList(item) {
+  const photos = Array.isArray(item.photos) ? item.photos.filter(Boolean) : [];
+  const videos = Array.isArray(item.videos) ? item.videos.filter(Boolean) : [];
+
+  const media = [
+    ...photos.map((url) => ({ type: 'image', url })),
+    ...videos.map((url) => ({ type: 'video', url })),
+  ];
+
+  if (media.length === 0) {
+    const single = item.display_url || item.thumbnail || item.image_url;
+    if (single) media.push({ type: 'image', url: single });
+  }
+
+  return media;
 }
 
 module.exports = { fetchLatestPosts, DEMO_MODE };

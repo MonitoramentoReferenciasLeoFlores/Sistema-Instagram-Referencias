@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS posts (
   profile_username TEXT NOT NULL,
   post_url TEXT NOT NULL UNIQUE,
   image_url TEXT,
+  media_json TEXT,
   caption TEXT,
   posted_at TEXT,
   fetched_at TEXT NOT NULL DEFAULT (datetime('now')),

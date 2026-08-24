@@ -131,12 +131,74 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
 
 .print-empty p { margin-bottom: 14px; }
 
-#post-image {
+/* ---------- Visualizador de midia (carrossel / video) ---------- */
+
+.media-viewer {
+  position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
   border: 1px solid var(--paper-edge);
+  background: #0f0e0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
 }
+
+.media-frame {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-frame img,
+.media-frame video {
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  display: block;
+  background: #0f0e0d;
+}
+
+.media-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--offwhite);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.media-nav.prev { left: 8px; }
+.media-nav.next { right: 8px; }
+.media-nav:hover { background: rgba(0, 0, 0, 0.8); }
+
+.media-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.media-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.media-dots .dot.active { background: var(--brass); }
 
 .print-stamp {
   display: flex;
@@ -288,6 +350,7 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
 .ref-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
@@ -344,6 +407,81 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   font-family: var(--font-mono);
   font-size: 12px;
   text-transform: uppercase;
+}
+
+/* ---------- Modal de visualizacao grande (Arquivo) ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 9, 8, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal-box {
+  background: var(--bg-raised);
+  border-radius: 6px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--offwhite);
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 3;
+  line-height: 1;
+}
+
+.modal-info { padding: 18px 20px 22px; }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.modal-caption {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--offwhite);
+  margin: 0 0 16px;
+  white-space: pre-wrap;
+}
+
+.modal-note-box {
+  border-top: 1px dashed rgba(255,255,255,0.15);
+  padding-top: 12px;
+}
+
+.modal-note-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brass);
+  margin-bottom: 6px;
+}
+
+.modal-note {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
 }
 
 @media (max-width: 560px) {

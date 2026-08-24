@@ -2,7 +2,60 @@ const state = {
   queue: [],
   index: 0,
   total: 0,
+  mediaIndex: 0,
 };
+
+/* ---------- Utilitario: monta a lista de midia de um post ---------- */
+
+function parseMedia(post) {
+  try {
+    const parsed = post.media_json ? JSON.parse(post.media_json) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch (err) {
+    // ignora e cai no fallback abaixo
+  }
+  return post.image_url ? [{ type: 'image', url: post.image_url }] : [];
+}
+
+/**
+ * Preenche um visualizador de midia (carrossel/video) com os elementos dados.
+ * Reaproveitado tanto na Triagem quanto no modal do Arquivo.
+ */
+function renderMediaViewer({ frameEl, prevEl, nextEl, dotsEl, media, index, onChange }) {
+  const item = media[index];
+  frameEl.innerHTML = '';
+
+  if (!item) return;
+
+  if (item.type === 'video') {
+    const video = document.createElement('video');
+    video.src = item.url;
+    video.controls = true;
+    video.playsInline = true;
+    frameEl.appendChild(video);
+  } else {
+    const img = document.createElement('img');
+    img.src = item.url;
+    img.alt = '';
+    frameEl.appendChild(img);
+  }
+
+  const hasMultiple = media.length > 1;
+  prevEl.hidden = !hasMultiple;
+  nextEl.hidden = !hasMultiple;
+
+  dotsEl.innerHTML = '';
+  if (hasMultiple) {
+    media.forEach((_, i) => {
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (i === index ? ' active' : '');
+      dotsEl.appendChild(dot);
+    });
+  }
+
+  prevEl.onclick = () => onChange(index > 0 ? index - 1 : media.length - 1);
+  nextEl.onclick = () => onChange(index < media.length - 1 ? index + 1 : 0);
+}
 
 /* ---------- Navegacao entre abas ---------- */
 
@@ -24,14 +77,14 @@ async function loadFeed() {
   const res = await fetch('/api/feed');
   state.queue = await res.json();
   state.index = 0;
+  state.mediaIndex = 0;
   state.total = state.queue.length;
   renderCurrentPost();
 }
 
 function renderCurrentPost() {
-  const card = document.getElementById('print-card');
   const empty = document.getElementById('empty-state');
-  const img = document.getElementById('post-image');
+  const viewer = document.getElementById('media-viewer');
   const stamp = document.getElementById('post-stamp');
   const caption = document.getElementById('post-caption');
   const controls = document.getElementById('decision-controls');
@@ -41,7 +94,7 @@ function renderCurrentPost() {
 
   if (!post) {
     empty.hidden = false;
-    img.hidden = true;
+    viewer.hidden = true;
     stamp.hidden = true;
     caption.hidden = true;
     controls.hidden = true;
@@ -50,13 +103,14 @@ function renderCurrentPost() {
   }
 
   empty.hidden = true;
-  img.hidden = false;
+  viewer.hidden = false;
   stamp.hidden = false;
   caption.hidden = false;
   controls.hidden = false;
 
-  img.src = post.image_url || '';
-  img.alt = post.caption || '';
+  state.mediaIndex = 0;
+  renderPostMedia();
+
   document.getElementById('post-user').textContent = `@${post.profile_username}`;
   document.getElementById('post-date').textContent = post.posted_at
     ? new Date(post.posted_at).toLocaleDateString('pt-BR')
@@ -66,15 +120,45 @@ function renderCurrentPost() {
   counter.textContent = `QUADRO ${state.index + 1} / ${state.total}`;
 }
 
+function renderPostMedia() {
+  const post = state.queue[state.index];
+  if (!post) return;
+  const media = parseMedia(post);
+
+  renderMediaViewer({
+    frameEl: document.getElementById('media-frame'),
+    prevEl: document.getElementById('media-prev'),
+    nextEl: document.getElementById('media-next'),
+    dotsEl: document.getElementById('media-dots'),
+    media,
+    index: state.mediaIndex,
+    onChange: (newIndex) => {
+      state.mediaIndex = newIndex;
+      renderPostMedia();
+    },
+  });
+}
+
 async function decide(status, extra = {}) {
   const post = state.queue[state.index];
   if (!post) return;
 
-  await fetch(`/api/posts/${post.id}/${status}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(extra),
-  });
+  try {
+    const res = await fetch(`/api/posts/${post.id}/${status}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(extra),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Não consegui salvar/descartar: ${body.error || res.status}`);
+      return;
+    }
+  } catch (err) {
+    alert(`Erro de conexão ao tentar salvar: ${err.message}`);
+    return;
+  }
 
   state.index += 1;
   renderCurrentPost();
@@ -102,12 +186,22 @@ document.getElementById('btn-confirm-save').addEventListener('click', async () =
 
 document.getElementById('btn-fetch-now').addEventListener('click', async (e) => {
   e.target.textContent = 'Buscando...';
-  await fetch('/api/fetch-now', { method: 'POST' });
+  try {
+    const res = await fetch('/api/fetch-now', { method: 'POST' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Erro ao buscar posts: ${body.error || res.status}`);
+    }
+  } catch (err) {
+    alert(`Erro de conexão: ${err.message}`);
+  }
   await loadFeed();
   e.target.textContent = 'Buscar posts agora';
 });
 
 /* ---------- Arquivo (referencias salvas) ---------- */
+
+let arquivoRefs = [];
 
 async function loadArquivo() {
   const q = document.getElementById('filter-q').value;
@@ -120,17 +214,17 @@ async function loadArquivo() {
   if (profile) params.set('profile', profile);
 
   const res = await fetch(`/api/references?${params.toString()}`);
-  const refs = await res.json();
+  arquivoRefs = await res.json();
 
   const sheet = document.getElementById('contact-sheet');
   const emptyNote = document.getElementById('arquivo-empty');
   sheet.innerHTML = '';
 
-  if (refs.length === 0) {
+  if (arquivoRefs.length === 0) {
     emptyNote.hidden = false;
   } else {
     emptyNote.hidden = true;
-    for (const ref of refs) {
+    arquivoRefs.forEach((ref, i) => {
       const el = document.createElement('div');
       el.className = 'ref-card';
       el.innerHTML = `
@@ -140,13 +234,12 @@ async function loadArquivo() {
           ${ref.category ? `<span class="ref-category">${ref.category}</span>` : ''}
         </div>
       `;
-      el.title = ref.note || ref.caption || '';
+      el.addEventListener('click', () => openRefModal(i));
       sheet.appendChild(el);
-    }
+    });
   }
 
-  // popula os filtros de categoria/perfil com valores unicos ja existentes
-  populateFilterOptions(refs);
+  populateFilterOptions(arquivoRefs);
 }
 
 function populateFilterOptions(refs) {
@@ -180,6 +273,60 @@ function debounce(fn, delay) {
     timer = setTimeout(() => fn(...args), delay);
   };
 }
+
+/* ---------- Modal de visualizacao grande (Arquivo) ---------- */
+
+let modalMediaIndex = 0;
+
+function openRefModal(refIndex) {
+  const ref = arquivoRefs[refIndex];
+  if (!ref) return;
+
+  modalMediaIndex = 0;
+  document.getElementById('modal-user').textContent = `@${ref.profile_username}`;
+  document.getElementById('modal-link').href = ref.post_url;
+  document.getElementById('modal-caption').textContent = ref.caption || '(sem legenda)';
+
+  const noteBox = document.getElementById('modal-note-box');
+  const note = [ref.category, ref.note].filter(Boolean).join(' — ');
+  if (note) {
+    noteBox.hidden = false;
+    document.getElementById('modal-note').textContent = note;
+  } else {
+    noteBox.hidden = true;
+  }
+
+  renderModalMedia(ref);
+  document.getElementById('ref-modal').hidden = false;
+}
+
+function renderModalMedia(ref) {
+  const media = parseMedia(ref);
+  renderMediaViewer({
+    frameEl: document.getElementById('modal-media-frame'),
+    prevEl: document.getElementById('modal-media-prev'),
+    nextEl: document.getElementById('modal-media-next'),
+    dotsEl: document.getElementById('modal-media-dots'),
+    media,
+    index: modalMediaIndex,
+    onChange: (newIndex) => {
+      modalMediaIndex = newIndex;
+      renderModalMedia(ref);
+    },
+  });
+}
+
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('ref-modal').hidden = true;
+  document.getElementById('modal-media-frame').innerHTML = '';
+});
+
+document.getElementById('ref-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'ref-modal') {
+    document.getElementById('ref-modal').hidden = true;
+    document.getElementById('modal-media-frame').innerHTML = '';
+  }
+});
 
 /* ---------- Perfis ---------- */
 

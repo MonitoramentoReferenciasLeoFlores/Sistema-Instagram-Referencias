@@ -38,7 +38,12 @@
           <button id="btn-fetch-now" class="btn-ghost">Buscar posts agora</button>
         </div>
 
-        <img id="post-image" alt="" hidden />
+        <div class="media-viewer" id="media-viewer" hidden>
+          <button class="media-nav prev" id="media-prev" aria-label="Anterior" hidden>‹</button>
+          <div class="media-frame" id="media-frame"></div>
+          <button class="media-nav next" id="media-next" aria-label="Próximo" hidden>›</button>
+          <div class="media-dots" id="media-dots"></div>
+        </div>
         <div class="print-stamp" id="post-stamp" hidden>
           <span class="stamp-user" id="post-user"></span>
           <span class="stamp-date" id="post-date"></span>
@@ -94,6 +99,32 @@
     <p class="empty-note" id="arquivo-empty" hidden>Nenhuma referência guardada ainda — comece a triagem na outra aba.</p>
 
   </section>
+
+  <!-- ===== MODAL: visualizacao grande de uma referencia guardada ===== -->
+  <div class="modal-overlay" id="ref-modal" hidden>
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close" aria-label="Fechar">×</button>
+
+      <div class="media-viewer" id="modal-media-viewer">
+        <button class="media-nav prev" id="modal-media-prev" aria-label="Anterior" hidden>‹</button>
+        <div class="media-frame" id="modal-media-frame"></div>
+        <button class="media-nav next" id="modal-media-next" aria-label="Próximo" hidden>›</button>
+        <div class="media-dots" id="modal-media-dots"></div>
+      </div>
+
+      <div class="modal-info">
+        <div class="modal-header">
+          <span class="stamp-user" id="modal-user"></span>
+          <a id="modal-link" href="#" target="_blank" rel="noopener" class="btn-ghost">Ver no Instagram ↗</a>
+        </div>
+        <p class="modal-caption" id="modal-caption"></p>
+        <div class="modal-note-box" id="modal-note-box">
+          <span class="modal-note-label">Por que é referência</span>
+          <p class="modal-note" id="modal-note"></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== PERFIS: gestao dos perfis acompanhados ===== -->
   <section id="view-perfis" class="view">
