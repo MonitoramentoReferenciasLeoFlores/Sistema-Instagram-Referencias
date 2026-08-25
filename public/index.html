@@ -27,7 +27,10 @@
   <!-- ===== TRIAGEM: uma foto por vez, como revisar negativos na mesa de luz ===== -->
   <section id="view-triagem" class="view active">
 
-    <div class="frame-counter" id="frame-counter">QUADRO — / —</div>
+    <div class="triagem-toolbar">
+      <div class="frame-counter" id="frame-counter">QUADRO — / —</div>
+      <button id="btn-fetch-now" class="btn-ghost">Buscar posts agora</button>
+    </div>
 
     <div class="lighttable">
       <div class="sprockets left" aria-hidden="true"></div>
@@ -35,7 +38,6 @@
       <div class="print-card" id="print-card">
         <div class="print-empty" id="empty-state">
           <p>Nenhum post pendente no momento.</p>
-          <button id="btn-fetch-now" class="btn-ghost">Buscar posts agora</button>
         </div>
 
         <div class="media-viewer" id="media-viewer" hidden>
