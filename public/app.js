@@ -269,8 +269,11 @@ async function loadArquivo() {
     arquivoRefs.forEach((ref, i) => {
       const el = document.createElement('div');
       el.className = 'ref-card';
+      const thumb = ref.image_url
+        ? `<img src="${ref.image_url}" alt="${(ref.caption || '').replace(/"/g, '&quot;')}" />`
+        : `<div class="ref-thumb-placeholder" title="Sem capa disponivel para este video">▶</div>`;
       el.innerHTML = `
-        <img src="${ref.image_url || ''}" alt="${(ref.caption || '').replace(/"/g, '&quot;')}" />
+        ${thumb}
         <div class="ref-meta">
           <span class="ref-user">@${ref.profile_username}</span>
           ${ref.category ? `<span class="ref-category">${ref.category}</span>` : ''}

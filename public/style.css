@@ -367,10 +367,20 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
   display: flex;
   flex-direction: column;
-  cursor: pointer;
 }
 
 .ref-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+
+.ref-thumb-placeholder {
+  width: 100%;
+  aspect-ratio: 1/1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0e0d;
+  color: var(--brass);
+  font-size: 28px;
+}
 
 .ref-meta {
   padding: 8px 9px;

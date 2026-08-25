@@ -32,20 +32,25 @@ function buildDemoPost(username, index) {
   const kind = index % 3;
 
   let media;
+  let coverImage;
   if (kind === 0) {
-    media = [{ type: 'image', url: `https://picsum.photos/seed/${encodeURIComponent(seed)}/1080/1080` }];
+    const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/1080/1080`;
+    media = [{ type: 'image', url }];
+    coverImage = url;
   } else if (kind === 1) {
     media = [0, 1, 2].map((i) => ({
       type: 'image',
       url: `https://picsum.photos/seed/${encodeURIComponent(seed + i)}/1080/1350`,
     }));
+    coverImage = media[0].url;
   } else {
     media = [{ type: 'video', url: DEMO_VIDEO_URL }];
+    coverImage = `https://picsum.photos/seed/${encodeURIComponent(seed)}/1080/1920`;
   }
 
   return {
     post_url: `https://instagram.com/p/demo-${seed}`,
-    image_url: media[0].url,
+    image_url: coverImage,
     media_json: JSON.stringify(media),
     caption: DEMO_CAPTIONS[index % DEMO_CAPTIONS.length],
     posted_at: new Date(Date.now() - index * 3600 * 1000).toISOString(),
@@ -124,25 +129,19 @@ function mapBrightDataPost(item) {
 
   const media = buildMediaList(item);
 
+  const firstImageMedia = media.find((m) => m.type === 'image');
+  let coverImage = item.thumbnail || item.display_url || firstImageMedia?.url || null;
+  if (coverImage && /\.mp4(\?|$)/i.test(coverImage)) coverImage = null;
+
   return {
     post_url: postUrl,
-    image_url: media[0]?.url || item.display_url || item.thumbnail || null,
+    image_url: coverImage,
     media_json: JSON.stringify(media),
     caption: item.caption || item.description || item.title || '',
     posted_at: item.date_posted || item.timestamp || item.posted_at || null,
   };
 }
 
-/**
- * Monta a lista de midia (fotos e/ou video) de um post, na ordem certa para
- * exibir como carrossel.
- *
- * Confirmado com uma amostra real do Bright Data: o campo "post_content" e
- * a fonte mais confiavel -- ele ja vem como uma lista ordenada (por "index")
- * com cada item marcado como "type": "Photo" ou "Video". Por isso usamos
- * ele como primeira opcao, e so caimos para "photos"/"videos" separados se
- * "post_content" nao vier (o que nao deveria acontecer, mas por seguranca).
- */
 function buildMediaList(item) {
   if (Array.isArray(item.post_content) && item.post_content.length > 0) {
     const media = [...item.post_content]

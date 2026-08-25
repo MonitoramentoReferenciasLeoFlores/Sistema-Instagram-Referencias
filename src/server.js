@@ -12,6 +12,32 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const INTERVAL_MIN = Number(process.env.FETCH_INTERVAL_MINUTES || 60);
 
+// Protecao simples por senha compartilhada. So fica ativa se a variavel
+// SHARED_PASSWORD estiver configurada (senao, roda aberto, como sempre --
+// util pra continuar testando sozinho sem precisar de senha).
+const SHARED_USER = process.env.SHARED_USERNAME || 'equipe';
+const SHARED_PASSWORD = process.env.SHARED_PASSWORD;
+
+if (SHARED_PASSWORD) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization || '';
+    const [, encoded] = header.split(' ');
+    let user = '';
+    let pass = '';
+    if (encoded) {
+      [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
+    }
+
+    if (user === SHARED_USER && pass === SHARED_PASSWORD) return next();
+
+    res.set('WWW-Authenticate', 'Basic realm="Mesa de Luz"');
+    return res.status(401).send('Acesso restrito. Peca o usuario e senha para quem administra o sistema.');
+  });
+  console.log('Protecao por senha: ATIVA');
+} else {
+  console.log('Protecao por senha: DESATIVADA (configure SHARED_PASSWORD para ativar)');
+}
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api', routes);

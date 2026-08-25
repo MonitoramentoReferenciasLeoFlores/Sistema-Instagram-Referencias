@@ -3,13 +3,22 @@ const db = require('./db');
 const { fetchLatestPosts, DEMO_MODE } = require('./brightdata');
 
 const insertPost = db.prepare(`
-  INSERT OR IGNORE INTO posts (profile_username, post_url, image_url, media_json, caption, posted_at)
+  INSERT INTO posts (profile_username, post_url, image_url, media_json, caption, posted_at)
   VALUES (@profile_username, @post_url, @image_url, @media_json, @caption, @posted_at)
+  ON CONFLICT(post_url) DO UPDATE SET
+    image_url = excluded.image_url,
+    media_json = excluded.media_json,
+    caption = excluded.caption
 `);
 
 /**
- * Busca posts novos para todos os perfis ativos e insere no banco
- * (ignorando posts cuja post_url ja existe, via UNIQUE + INSERT OR IGNORE).
+ * Busca posts novos para todos os perfis ativos e insere no banco.
+ * Se um post ja existir (pendente, guardado ou descartado), a imagem de
+ * capa/midia/legenda dele e atualizada com a versao mais recente -- isso e
+ * o que permite que uma correcao no sistema (como a do carrossel/video/
+ * thumbnail) tambem valha para posts que ja tinham sido coletados antes,
+ * inclusive os que voce ja guardou. O status (pendente/guardado/descartado),
+ * a categoria e a nota nunca sao alterados por essa busca.
  * Os perfis sao buscados todos ao mesmo tempo (nao um de cada vez), pra o
  * tempo total nao virar "numero de perfis x tempo de espera de cada um".
  */
