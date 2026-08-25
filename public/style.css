@@ -223,6 +223,16 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   margin: 0;
 }
 
+.print-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--brass);
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.print-link:hover { text-decoration: underline; }
+
 /* ---------- Botoes de decisao (lapis de cera) ---------- */
 
 .decision-controls {
@@ -293,6 +303,7 @@ main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
 
 .save-drawer input,
 .save-drawer textarea,
+.save-drawer select,
 .toolbar input,
 .toolbar select,
 .add-profile input {

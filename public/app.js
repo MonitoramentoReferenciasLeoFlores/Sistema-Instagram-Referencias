@@ -83,6 +83,7 @@ function renderCurrentPost() {
   const viewer = document.getElementById('media-viewer');
   const stamp = document.getElementById('post-stamp');
   const caption = document.getElementById('post-caption');
+  const link = document.getElementById('post-link');
   const controls = document.getElementById('decision-controls');
   const counter = document.getElementById('frame-counter');
 
@@ -93,6 +94,7 @@ function renderCurrentPost() {
     viewer.hidden = true;
     stamp.hidden = true;
     caption.hidden = true;
+    link.hidden = true;
     controls.hidden = true;
     counter.textContent = 'QUADRO — / —';
     return;
@@ -102,6 +104,7 @@ function renderCurrentPost() {
   viewer.hidden = false;
   stamp.hidden = false;
   caption.hidden = false;
+  link.hidden = false;
   controls.hidden = false;
 
   state.mediaIndex = 0;
@@ -112,6 +115,7 @@ function renderCurrentPost() {
     ? new Date(post.posted_at).toLocaleDateString('pt-BR')
     : '';
   caption.textContent = post.caption || '(sem legenda)';
+  link.href = post.post_url;
 
   counter.textContent = `QUADRO ${state.index + 1} / ${state.total}`;
 }
@@ -162,11 +166,49 @@ async function decide(status, extra = {}) {
 
 document.getElementById('btn-discard').addEventListener('click', () => decide('discard'));
 
-document.getElementById('btn-save').addEventListener('click', () => {
+document.getElementById('btn-save').addEventListener('click', async () => {
   document.getElementById('save-drawer').hidden = false;
-  document.getElementById('save-category').value = '';
   document.getElementById('save-note').value = '';
-  document.getElementById('save-category').focus();
+
+  const newInput = document.getElementById('save-category-new');
+  newInput.value = '';
+  newInput.hidden = true;
+
+  await populateCategorySelect();
+  document.getElementById('save-category-select').focus();
+});
+
+async function populateCategorySelect() {
+  const select = document.getElementById('save-category-select');
+  select.innerHTML = '<option value="">(sem categoria)</option>';
+
+  try {
+    const res = await fetch('/api/categories');
+    const categories = await res.json();
+    for (const cat of categories) {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      select.appendChild(opt);
+    }
+  } catch (err) {
+    // se falhar, o usuario ainda pode usar "+ Nova categoria..."
+  }
+
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ Nova categoria...';
+  select.appendChild(newOpt);
+}
+
+document.getElementById('save-category-select').addEventListener('change', (e) => {
+  const newInput = document.getElementById('save-category-new');
+  if (e.target.value === '__new__') {
+    newInput.hidden = false;
+    newInput.focus();
+  } else {
+    newInput.hidden = true;
+  }
 });
 
 document.getElementById('btn-cancel-save').addEventListener('click', () => {
@@ -174,7 +216,11 @@ document.getElementById('btn-cancel-save').addEventListener('click', () => {
 });
 
 document.getElementById('btn-confirm-save').addEventListener('click', async () => {
-  const category = document.getElementById('save-category').value.trim();
+  const select = document.getElementById('save-category-select');
+  const isNew = select.value === '__new__';
+  const category = isNew
+    ? document.getElementById('save-category-new').value.trim()
+    : select.value.trim();
   const note = document.getElementById('save-note').value.trim();
   document.getElementById('save-drawer').hidden = true;
   await decide('save', { category: category || null, note: note || null });

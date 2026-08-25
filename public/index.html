@@ -51,6 +51,7 @@
           <span class="stamp-date" id="post-date"></span>
         </div>
         <p class="print-caption" id="post-caption" hidden></p>
+        <a class="print-link" id="post-link" href="#" target="_blank" rel="noopener" hidden>Ver no Instagram ↗</a>
       </div>
 
       <div class="sprockets right" aria-hidden="true"></div>
@@ -70,7 +71,11 @@
     <div class="save-drawer" id="save-drawer" hidden>
       <label>
         Categoria
-        <input type="text" id="save-category" placeholder="ex.: campanha, storytelling, evento" />
+        <select id="save-category-select">
+          <option value="">(sem categoria)</option>
+          <option value="__new__">+ Nova categoria...</option>
+        </select>
+        <input type="text" id="save-category-new" placeholder="nome da nova categoria" hidden />
       </label>
       <label>
         Por que isso é uma referência?
