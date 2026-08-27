@@ -139,6 +139,23 @@
   <!-- ===== PERFIS: gestao dos perfis acompanhados ===== -->
   <section id="view-perfis" class="view">
 
+    <div class="settings-box">
+      <h3>Filtros de coleta</h3>
+      <label class="settings-row">
+        <input type="checkbox" id="setting-exclude-sponsored" />
+        Ocultar publicações patrocinadas
+      </label>
+      <label class="settings-row">
+        Engajamento mínimo (curtidas + comentários)
+        <input type="number" id="setting-min-engagement" min="0" placeholder="0 = sem mínimo" />
+      </label>
+      <p class="settings-note">
+        Não é possível filtrar por alcance real (essa informação só fica visível para quem administra a própria conta) —
+        aqui o filtro usa curtidas e comentários, que são públicos.
+      </p>
+      <button id="btn-save-settings" class="btn-solid">Salvar filtros</button>
+    </div>
+
     <form id="form-add-profile" class="add-profile">
       <input type="text" id="new-profile-username" placeholder="@usuario_do_instagram" required />
       <button type="submit" class="btn-solid">Adicionar</button>

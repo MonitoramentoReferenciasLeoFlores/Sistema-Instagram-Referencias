@@ -22,5 +22,33 @@ function ensureColumn(table, column, definition) {
   }
 }
 ensureColumn('posts', 'media_json', 'TEXT');
+ensureColumn('posts', 'likes', 'INTEGER');
+ensureColumn('posts', 'num_comments', 'INTEGER');
+ensureColumn('posts', "is_sponsored", 'INTEGER NOT NULL DEFAULT 0');
+
+/**
+ * Le as configuracoes de filtro de coleta (engajamento minimo e se deve
+ * ignorar publicacoes patrocinadas). Valores padrao: sem minimo, e
+ * patrocinadas ficam ocultas por padrao.
+ */
+function getSettings() {
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return {
+    min_engagement: Number(map.min_engagement || 0),
+    exclude_sponsored: map.exclude_sponsored === undefined ? true : map.exclude_sponsored === '1',
+  };
+}
+
+function setSettings({ min_engagement, exclude_sponsored }) {
+  const upsert = db.prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  );
+  upsert.run('min_engagement', String(min_engagement ?? 0));
+  upsert.run('exclude_sponsored', exclude_sponsored ? '1' : '0');
+}
 
 module.exports = db;
+module.exports.getSettings = getSettings;
+module.exports.setSettings = setSettings;

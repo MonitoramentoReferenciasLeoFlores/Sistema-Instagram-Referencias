@@ -54,6 +54,9 @@ function buildDemoPost(username, index) {
     media_json: JSON.stringify(media),
     caption: DEMO_CAPTIONS[index % DEMO_CAPTIONS.length],
     posted_at: new Date(Date.now() - index * 3600 * 1000).toISOString(),
+    likes: Math.floor(Math.random() * 5000),
+    num_comments: Math.floor(Math.random() * 200),
+    is_sponsored: index === 2 ? 1 : 0,
   };
 }
 
@@ -139,6 +142,9 @@ function mapBrightDataPost(item) {
     media_json: JSON.stringify(media),
     caption: item.caption || item.description || item.title || '',
     posted_at: item.date_posted || item.timestamp || item.posted_at || null,
+    likes: typeof item.likes === 'number' ? item.likes : null,
+    num_comments: typeof item.num_comments === 'number' ? item.num_comments : null,
+    is_sponsored: item.is_paid_partnership ? 1 : 0,
   };
 }
 

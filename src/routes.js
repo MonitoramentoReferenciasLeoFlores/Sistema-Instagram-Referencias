@@ -1,12 +1,32 @@
 const express = require('express');
 const db = require('./db');
+const { getSettings, setSettings } = require('./db');
 const { runFetchJob } = require('./fetchJob');
 
 const router = express.Router();
 
+/* ---------- Configuracoes (filtros de coleta) ---------- */
+
+router.get('/settings', (req, res) => {
+  res.json(getSettings());
+});
+
+router.post('/settings', (req, res) => {
+  const { min_engagement, exclude_sponsored } = req.body || {};
+  try {
+    setSettings({
+      min_engagement: Number(min_engagement) || 0,
+      exclude_sponsored: Boolean(exclude_sponsored),
+    });
+    res.json(getSettings());
+  } catch (err) {
+    console.error('[POST /settings] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ---------- Feed de triagem ---------- */
 
-// Lista posts pendentes de decisao (mais antigos primeiro)
 router.get('/feed', (req, res) => {
   const posts = db
     .prepare(`SELECT * FROM posts WHERE status = 'pending' ORDER BY fetched_at ASC`)
@@ -14,7 +34,6 @@ router.get('/feed', (req, res) => {
   res.json(posts);
 });
 
-// Marca um post como guardado (referencia)
 router.post('/posts/:id/save', (req, res) => {
   try {
     const { category = null, note = null } = req.body || {};
@@ -33,7 +52,6 @@ router.post('/posts/:id/save', (req, res) => {
   }
 });
 
-// Marca um post como descartado
 router.post('/posts/:id/discard', (req, res) => {
   try {
     const result = db
@@ -53,7 +71,6 @@ router.post('/posts/:id/discard', (req, res) => {
 
 /* ---------- Banco de referencias salvas ---------- */
 
-// Lista categorias ja usadas (para preencher o menu suspenso na Triagem)
 router.get('/categories', (req, res) => {
   const rows = db
     .prepare(`SELECT DISTINCT category FROM posts WHERE category IS NOT NULL AND category != '' ORDER BY category`)
@@ -61,7 +78,6 @@ router.get('/categories', (req, res) => {
   res.json(rows.map((r) => r.category));
 });
 
-// Lista/busca referencias salvas. Query params opcionais: q, category, profile
 router.get('/references', (req, res) => {
   const { q, category, profile } = req.query;
 

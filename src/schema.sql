@@ -21,8 +21,18 @@ CREATE TABLE IF NOT EXISTS posts (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'saved', 'discarded')),
   category TEXT,
   note TEXT,
-  reviewed_at TEXT
+  reviewed_at TEXT,
+  likes INTEGER,
+  num_comments INTEGER,
+  is_sponsored INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_profile ON posts(profile_username);
+
+-- Configuracoes gerais do sistema (chave/valor), ex.: filtro de engajamento
+-- minimo e se publicacoes patrocinadas devem ser ignoradas na coleta.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);

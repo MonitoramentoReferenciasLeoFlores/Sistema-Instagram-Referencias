@@ -63,8 +63,46 @@ document.querySelectorAll('.tab').forEach((tab) => {
     document.getElementById(`view-${tab.dataset.view}`).classList.add('active');
 
     if (tab.dataset.view === 'arquivo') loadArquivo();
-    if (tab.dataset.view === 'perfis') loadProfiles();
+    if (tab.dataset.view === 'perfis') {
+      loadProfiles();
+      loadSettings();
+    }
   });
+});
+
+/* ---------- Configuracoes de filtro ---------- */
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    const settings = await res.json();
+    document.getElementById('setting-exclude-sponsored').checked = settings.exclude_sponsored;
+    document.getElementById('setting-min-engagement').value = settings.min_engagement || '';
+  } catch (err) {
+    // se falhar, deixa os campos como estao
+  }
+}
+
+document.getElementById('btn-save-settings').addEventListener('click', async () => {
+  const exclude_sponsored = document.getElementById('setting-exclude-sponsored').checked;
+  const min_engagement = Number(document.getElementById('setting-min-engagement').value) || 0;
+
+  const btn = document.getElementById('btn-save-settings');
+  btn.textContent = 'Salvando...';
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exclude_sponsored, min_engagement }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Não consegui salvar: ${body.error || res.status}`);
+    }
+  } catch (err) {
+    alert(`Erro de conexão: ${err.message}`);
+  }
+  btn.textContent = 'Salvar filtros';
 });
 
 /* ---------- Triagem ---------- */
