@@ -25,6 +25,7 @@ ensureColumn('posts', 'media_json', 'TEXT');
 ensureColumn('posts', 'likes', 'INTEGER');
 ensureColumn('posts', 'num_comments', 'INTEGER');
 ensureColumn('posts', "is_sponsored", 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('posts', 'used_in_json', 'TEXT');
 
 /**
  * Le as configuracoes de filtro de coleta (engajamento minimo e se deve

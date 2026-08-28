@@ -18,6 +18,7 @@
   <nav class="tabs">
     <button class="tab active" data-view="triagem">Triagem</button>
     <button class="tab" data-view="arquivo">Arquivo</button>
+    <button class="tab" data-view="adicionar">Adicionar</button>
     <button class="tab" data-view="perfis">Perfis</button>
   </nav>
 </header>
@@ -132,9 +133,64 @@
           <span class="modal-note-label">Por que é referência</span>
           <p class="modal-note" id="modal-note"></p>
         </div>
+        <div class="used-in-box">
+          <span class="modal-note-label">Já usado em</span>
+          <div class="used-in-options" id="modal-used-in-options"></div>
+          <div class="used-in-actions">
+            <button id="btn-save-used-in" class="btn-ghost">Salvar</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- ===== ADICIONAR: cadastro manual de referencias ===== -->
+  <section id="view-adicionar" class="view">
+
+    <form id="form-manual" class="manual-form">
+      <label>
+        Imagem (opcional se tiver o link do post)
+        <input type="file" id="manual-image" accept="image/*" />
+      </label>
+
+      <label>
+        Link do post (opcional se tiver a imagem)
+        <input type="url" id="manual-post-url" placeholder="https://instagram.com/p/..." />
+      </label>
+
+      <label>
+        Perfil
+        <input type="text" id="manual-profile" placeholder="@usuario_do_instagram" />
+      </label>
+
+      <label>
+        Legenda / descrição
+        <textarea id="manual-caption" rows="3" placeholder="cole a legenda ou descreva o conteúdo"></textarea>
+      </label>
+
+      <label>
+        Categoria
+        <select id="manual-category-select">
+          <option value="">(sem categoria)</option>
+          <option value="__new__">+ Nova categoria...</option>
+        </select>
+        <input type="text" id="manual-category-new" placeholder="nome da nova categoria" hidden />
+      </label>
+
+      <label>
+        Por que isso é uma referência?
+        <textarea id="manual-note" rows="2" placeholder="anote o motivo em uma frase"></textarea>
+      </label>
+
+      <div class="used-in-box">
+        <span class="modal-note-label">Já usado em</span>
+        <div class="used-in-options" id="manual-used-in-options"></div>
+      </div>
+
+      <button type="submit" class="btn-solid">Cadastrar referência</button>
+    </form>
+
+  </section>
 
   <!-- ===== PERFIS: gestao dos perfis acompanhados ===== -->
   <section id="view-perfis" class="view">

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS posts (
   reviewed_at TEXT,
   likes INTEGER,
   num_comments INTEGER,
-  is_sponsored INTEGER NOT NULL DEFAULT 0
+  is_sponsored INTEGER NOT NULL DEFAULT 0,
+  used_in_json TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);

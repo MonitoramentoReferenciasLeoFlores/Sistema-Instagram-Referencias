@@ -12,9 +12,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const INTERVAL_MIN = Number(process.env.FETCH_INTERVAL_MINUTES || 60);
 
-// Protecao simples por senha compartilhada. So fica ativa se a variavel
-// SHARED_PASSWORD estiver configurada (senao, roda aberto, como sempre --
-// util pra continuar testando sozinho sem precisar de senha).
 const SHARED_USER = process.env.SHARED_USERNAME || 'equipe';
 const SHARED_PASSWORD = process.env.SHARED_PASSWORD;
 
@@ -40,6 +37,7 @@ if (SHARED_PASSWORD) {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'data', 'uploads')));
 app.use('/api', routes);
 
 app.listen(PORT, () => {
@@ -48,13 +46,10 @@ app.listen(PORT, () => {
   console.log(`Coleta automatica a cada ${INTERVAL_MIN} minuto(s).\n`);
 });
 
-// Agenda a coleta periodica. Ex.: a cada 60 min -> '*/60 * * * *' nao existe
-// em cron padrao para minutos >59, entao usamos um intervalo em minutos.
 const cronExpression = `*/${Math.min(INTERVAL_MIN, 59)} * * * *`;
 cron.schedule(cronExpression, () => {
   console.log('[cron] Disparando coleta automatica...');
   runFetchJob().catch((err) => console.error('[cron] Erro na coleta:', err.message));
 });
 
-// Roda uma coleta inicial ao subir o servidor, para popular o feed logo de cara.
 runFetchJob().catch((err) => console.error('[startup] Erro na coleta inicial:', err.message));

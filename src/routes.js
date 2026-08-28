@@ -1,9 +1,24 @@
 const express = require('express');
+const path = require('path');
+const crypto = require('crypto');
+const multer = require('multer');
 const db = require('./db');
 const { getSettings, setSettings } = require('./db');
 const { runFetchJob } = require('./fetchJob');
 
 const router = express.Router();
+
+const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'uploads');
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOADS_DIR,
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.jpg';
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+});
 
 /* ---------- Configuracoes (filtros de coleta) ---------- */
 
@@ -149,6 +164,60 @@ router.delete('/posts/:id', (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /posts/:id] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------- Cadastro manual de referencias ---------- */
+
+router.post('/manual-reference', upload.single('image'), (req, res) => {
+  try {
+    const { profile_username, post_url, caption, category, note, used_in } = req.body || {};
+
+    if (!req.file && !post_url) {
+      return res.status(400).json({ error: 'Envie uma imagem ou um link do post' });
+    }
+
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const mediaJson = imageUrl ? JSON.stringify([{ type: 'image', url: imageUrl }]) : null;
+
+    const finalPostUrl = post_url && post_url.trim() ? post_url.trim() : `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const result = db
+      .prepare(
+        `INSERT INTO posts (profile_username, post_url, image_url, media_json, caption, status, category, note, used_in_json, reviewed_at, fetched_at)
+         VALUES (?, ?, ?, ?, ?, 'saved', ?, ?, ?, datetime('now'), datetime('now'))`
+      )
+      .run(
+        (profile_username || '').replace('@', '').trim() || 'manual',
+        finalPostUrl,
+        imageUrl,
+        mediaJson,
+        caption || '',
+        category || null,
+        note || null,
+        used_in || null
+      );
+
+    res.status(201).json({ ok: true, id: result.lastInsertRowid });
+  } catch (err) {
+    console.error('[POST /manual-reference] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------- Marcar onde uma referencia ja foi usada ---------- */
+
+router.post('/posts/:id/used-in', (req, res) => {
+  try {
+    const { used_in } = req.body || {};
+    const used_in_json = JSON.stringify(Array.isArray(used_in) ? used_in : []);
+
+    const result = db.prepare('UPDATE posts SET used_in_json = ? WHERE id = ?').run(used_in_json, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Post nao encontrado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /posts/:id/used-in] erro:', err);
     res.status(500).json({ error: err.message });
   }
 });

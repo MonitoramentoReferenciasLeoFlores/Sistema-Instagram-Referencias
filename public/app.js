@@ -5,6 +5,8 @@ const state = {
   mediaIndex: 0,
 };
 
+const USED_IN_OPTIONS = ['Fiems', 'Sesi', 'Senai', 'IEL'];
+
 /* ---------- Utilitario: monta a lista de midia de um post ---------- */
 
 function parseMedia(post) {
@@ -15,6 +17,15 @@ function parseMedia(post) {
     // ignora e cai no fallback abaixo
   }
   return post.image_url ? [{ type: 'image', url: post.image_url }] : [];
+}
+
+function parseUsedIn(post) {
+  try {
+    const parsed = post.used_in_json ? JSON.parse(post.used_in_json) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    return [];
+  }
 }
 
 function renderMediaViewer({ frameEl, prevEl, nextEl, dotsEl, media, index, onChange }) {
@@ -52,6 +63,109 @@ function renderMediaViewer({ frameEl, prevEl, nextEl, dotsEl, media, index, onCh
   prevEl.onclick = () => onChange(index > 0 ? index - 1 : media.length - 1);
   nextEl.onclick = () => onChange(index < media.length - 1 ? index + 1 : 0);
 }
+
+function renderUsedInCheckboxes(containerId, selectedValues = []) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  const otherValue = selectedValues.find((v) => !USED_IN_OPTIONS.includes(v));
+
+  USED_IN_OPTIONS.forEach((opt) => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = opt;
+    checkbox.dataset.fixed = 'true';
+    checkbox.checked = selectedValues.includes(opt);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(opt));
+    container.appendChild(label);
+  });
+
+  const otherLabel = document.createElement('label');
+  const otherCheckbox = document.createElement('input');
+  otherCheckbox.type = 'checkbox';
+  otherCheckbox.id = `${containerId}-other-checkbox`;
+  otherCheckbox.checked = Boolean(otherValue);
+  otherLabel.appendChild(otherCheckbox);
+  otherLabel.appendChild(document.createTextNode('Outro:'));
+  container.appendChild(otherLabel);
+
+  const otherText = document.createElement('input');
+  otherText.type = 'text';
+  otherText.id = `${containerId}-other-text`;
+  otherText.placeholder = 'especifique';
+  otherText.hidden = !otherValue;
+  otherText.value = otherValue ? otherValue.replace(/^Outro:\s*/, '') : '';
+  container.appendChild(otherText);
+
+  otherCheckbox.addEventListener('change', () => {
+    otherText.hidden = !otherCheckbox.checked;
+    if (otherCheckbox.checked) otherText.focus();
+  });
+}
+
+function collectUsedInValues(containerId) {
+  const container = document.getElementById(containerId);
+  const values = [];
+
+  container.querySelectorAll('input[type="checkbox"][data-fixed]').forEach((cb) => {
+    if (cb.checked) values.push(cb.value);
+  });
+
+  const otherCheckbox = document.getElementById(`${containerId}-other-checkbox`);
+  const otherText = document.getElementById(`${containerId}-other-text`);
+  if (otherCheckbox && otherCheckbox.checked && otherText.value.trim()) {
+    values.push(`Outro: ${otherText.value.trim()}`);
+  }
+
+  return values;
+}
+
+/* ---------- Categorias (menu suspenso reutilizavel) ---------- */
+
+async function populateCategorySelect(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">(sem categoria)</option>';
+
+  try {
+    const res = await fetch('/api/categories');
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      alert(`Não consegui carregar categorias (status ${res.status}): ${body || 'erro desconhecido'}`);
+    } else {
+      const categories = await res.json();
+      for (const cat of categories) {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      }
+    }
+  } catch (err) {
+    alert(`Erro de conexão ao carregar categorias: ${err.message}`);
+  }
+
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ Nova categoria...';
+  select.appendChild(newOpt);
+}
+
+function wireCategorySelectToggle(selectId, newInputId) {
+  document.getElementById(selectId).addEventListener('change', (e) => {
+    const newInput = document.getElementById(newInputId);
+    if (e.target.value === '__new__') {
+      newInput.hidden = false;
+      newInput.focus();
+    } else {
+      newInput.hidden = true;
+    }
+  });
+}
+
+wireCategorySelectToggle('save-category-select', 'save-category-new');
+wireCategorySelectToggle('manual-category-select', 'manual-category-new');
 
 /* ---------- Navegacao entre abas ---------- */
 
@@ -212,41 +326,8 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   newInput.value = '';
   newInput.hidden = true;
 
-  await populateCategorySelect();
+  await populateCategorySelect('save-category-select');
   document.getElementById('save-category-select').focus();
-});
-
-async function populateCategorySelect() {
-  const select = document.getElementById('save-category-select');
-  select.innerHTML = '<option value="">(sem categoria)</option>';
-
-  try {
-    const res = await fetch('/api/categories');
-    const categories = await res.json();
-    for (const cat of categories) {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      select.appendChild(opt);
-    }
-  } catch (err) {
-    // se falhar, o usuario ainda pode usar "+ Nova categoria..."
-  }
-
-  const newOpt = document.createElement('option');
-  newOpt.value = '__new__';
-  newOpt.textContent = '+ Nova categoria...';
-  select.appendChild(newOpt);
-}
-
-document.getElementById('save-category-select').addEventListener('change', (e) => {
-  const newInput = document.getElementById('save-category-new');
-  if (e.target.value === '__new__') {
-    newInput.hidden = false;
-    newInput.focus();
-  } else {
-    newInput.hidden = true;
-  }
 });
 
 document.getElementById('btn-cancel-save').addEventListener('click', () => {
@@ -381,9 +462,32 @@ function openRefModal(refIndex) {
     noteBox.hidden = true;
   }
 
+  renderUsedInCheckboxes('modal-used-in-options', parseUsedIn(ref));
   renderModalMedia(ref);
   document.getElementById('ref-modal').hidden = false;
 }
+
+document.getElementById('btn-save-used-in').addEventListener('click', async () => {
+  if (!currentModalRefId) return;
+  const usedIn = collectUsedInValues('modal-used-in-options');
+
+  try {
+    const res = await fetch(`/api/posts/${currentModalRefId}/used-in`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ used_in: usedIn }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Não consegui salvar: ${body.error || res.status}`);
+      return;
+    }
+    const ref = arquivoRefs.find((r) => r.id === currentModalRefId);
+    if (ref) ref.used_in_json = JSON.stringify(usedIn);
+  } catch (err) {
+    alert(`Erro de conexão: ${err.message}`);
+  }
+});
 
 document.getElementById('modal-delete').addEventListener('click', async () => {
   if (!currentModalRefId) return;
@@ -434,6 +538,60 @@ document.getElementById('ref-modal').addEventListener('click', (e) => {
   }
 });
 
+/* ---------- Adicionar (cadastro manual) ---------- */
+
+document.getElementById('form-manual').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const imageInput = document.getElementById('manual-image');
+  const postUrl = document.getElementById('manual-post-url').value.trim();
+
+  if (!imageInput.files[0] && !postUrl) {
+    alert('Envie uma imagem ou informe o link do post.');
+    return;
+  }
+
+  const categorySelect = document.getElementById('manual-category-select');
+  const isNewCategory = categorySelect.value === '__new__';
+  const category = isNewCategory
+    ? document.getElementById('manual-category-new').value.trim()
+    : categorySelect.value.trim();
+
+  const usedIn = collectUsedInValues('manual-used-in-options');
+
+  const formData = new FormData();
+  if (imageInput.files[0]) formData.append('image', imageInput.files[0]);
+  formData.append('post_url', postUrl);
+  formData.append('profile_username', document.getElementById('manual-profile').value.trim());
+  formData.append('caption', document.getElementById('manual-caption').value.trim());
+  formData.append('category', category);
+  formData.append('note', document.getElementById('manual-note').value.trim());
+  formData.append('used_in', JSON.stringify(usedIn));
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.textContent = 'Cadastrando...';
+  submitBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/manual-reference', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Não consegui cadastrar: ${body.error || res.status}`);
+    } else {
+      alert('Referência cadastrada com sucesso!');
+      e.target.reset();
+      document.getElementById('manual-category-new').hidden = true;
+      renderUsedInCheckboxes('manual-used-in-options', []);
+      await populateCategorySelect('manual-category-select');
+    }
+  } catch (err) {
+    alert(`Erro de conexão: ${err.message}`);
+  }
+
+  submitBtn.textContent = 'Cadastrar referência';
+  submitBtn.disabled = false;
+});
+
 /* ---------- Perfis ---------- */
 
 async function loadProfiles() {
@@ -476,3 +634,5 @@ document.getElementById('form-add-profile').addEventListener('submit', async (e)
 /* ---------- Boot ---------- */
 
 loadFeed();
+populateCategorySelect('manual-category-select');
+renderUsedInCheckboxes('manual-used-in-options', []);
